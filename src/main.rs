@@ -1,229 +1,272 @@
-use extend::*;
-use text_io::*;
+mod chess;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Team {
-    Black,
-    White,
-}
+use chess::*;
 
-impl std::ops::Not for Team {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
-        match self {
-            Team::White => Team::Black,
-            Team::Black => Team::White,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-enum Piece {
-    King,
-    Queen,
-    Rook,
-    Bishop,
-    Horse,
-    Pawn,
-}
-
-struct PieceOfTeam {
-    piece: Piece,
-    team: Team
-}
+#[macro_use]
+extern crate glium;
+use chess::PieceWithTeam;
+use glium::glutin;
+use glium::Surface;
+use image;
+use std::{
+    collections::HashMap,
+    io::Cursor,
+    time::{Duration, Instant},
+};
 
 #[derive(Clone, Copy)]
-struct TilePosition {
-    letter: usize,
-    number: usize,
+struct Vertex {
+    position: [f32; 2],
+}
+implement_vertex!(Vertex, position);
+
+struct Shape {
+    vertices: Vec<Vertex>,
+    indices: Vec<u16>,
+}
+#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+enum PieceOrBoard {
+    Board,
+    Piece(PieceWithTeam),
 }
 
-#[derive(Clone, Copy)]
-struct Play {
-    origin: TilePosition,
-    target: TilePosition,
-}
-
-struct PossiblePlaysTreeNode {
-    game_state: GameState,
-    possibilities: Vec<PossiblePlaysTreeNode>,
-}
-
-#[derive(Clone, Copy)]
-struct GameState {
-    turn: Team,
-    board: [[Option<Piece>; 8]; 8],
-}
-
-impl TilePosition {
-    fn is_valid(&self) -> bool {
-        if self.letter < 0 || self.letter > 7 || self.number < 0 || self.number > 7 {
-            return false;
-        }
-        return true;
-    }
-}
-
-impl Play {
-    fn get_all_possible_plays(game_state: &GameState) -> Vec<Play> {
-        let mut possible_plays: Vec<Play> = vec![];
-        for (number, row) in game_state.board.iter().enumerate() {
-            for (letter, _) in row.iter().enumerate() {
-                let position = TilePosition { number, letter };
-                possible_plays.append(&mut Self::get_possible_plays_for_tile(position, game_state));
-            }
-        }
-        return possible_plays;
-    }
-    fn get_possible_plays_for_tile(origin: TilePosition, game_state: &GameState) -> Vec<Play> {
-        let mut possible_plays: Vec<Play> = vec![];
-        let Some(piece) = game_state.board[origin.number][origin.letter] else {
-            return possible_plays;
-        };
-        match piece {
-            Piece::Pawn(team) if team == game_state.turn => match team {
-                Team::White => {
-                    if let None = game_state.board[origin.number + 1][origin.letter] {
-                        possible_plays.push(Play {
-                            origin,
-                            target: TilePosition {
-                                letter: origin.letter,
-                                number: origin.number + 1,
-                            },
-                        });
-                    }
-                    let mut target = TilePosition {
-                        letter: origin.letter + 1,
-                        number: origin.number + 1,
-                    };
-                    if target.is_valid() {
-                        if let Some(target_piece) = game_state.board[target.number][target.letter] {
-                            if let target_piece(team) = game_state.turn {}
-                        }
-                    }
-                    if origin.number == 1 {
-                        possible_plays.push(Play {
-                            origin,
-                            target: TilePosition {
-                                letter: origin.letter,
-                                number: origin.number + 2,
-                            },
-                        });
-                    }
-                }
-                Team::Black => {
-                    if let None = game_state.board[origin.number - 1][origin.letter] {
-                        possible_plays.push(Play {
-                            origin,
-                            target: TilePosition {
-                                letter: origin.letter,
-                                number: origin.number - 1,
-                            },
-                        });
-                    }
-                    if origin.number == 6 {
-                        possible_plays.push(Play {
-                            origin,
-                            target: TilePosition {
-                                letter: origin.letter,
-                                number: origin.number - 2,
-                            },
-                        });
-                    }
-                }
-            },
-            Piece::King(team) if team == game_state.turn => {}
-        }
-
-        return possible_plays;
-    }
-}
-
-impl Piece {
-    fn get_value(&self) -> u32 {
-        match *self {
-            Piece::Pawn(_) => return 1,
-            Piece::Horse(_) => return 3,
-            Piece::Bishop(_) => return 3,
-            Piece::Rook(_) => return 5,
-            Piece::Queen(_) => return 9,
-            Piece::King(_) => return 10_000,
-        }
-    }
-}
-
-impl GameState {
-    fn check_for_piece(&self, target: TilePosition) -> Option<(Piece,Team)> {
-        match self.board[target.number][target.letter] {
-            None => return None,
-            Some(piece) => {
-                return Some((piece, )
-            }
-        }
-    }
-    fn after(&self, play: Play) -> Self {
-        let mut next_game_state: GameState = *self;
-        next_game_state.turn = !next_game_state.turn;
-        next_game_state.board[play.target.number][play.target.letter] =
-            self.board[play.origin.number][play.origin.letter];
-        next_game_state.board[play.origin.number][play.origin.letter] = None;
-
-        return next_game_state;
-    }
-    fn new() -> Self {
-        return Self {
-            turn: Team::White,
-            board: [
-                [
-                    Some(Piece::Rook(Team::White)),
-                    Some(Piece::Horse(Team::White)),
-                    Some(Piece::Bishop(Team::White)),
-                    Some(Piece::Queen(Team::White)),
-                    Some(Piece::King(Team::White)),
-                    Some(Piece::Bishop(Team::White)),
-                    Some(Piece::Horse(Team::White)),
-                    Some(Piece::Rook(Team::White)),
-                ],
-                [
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                    Some(Piece::Pawn(Team::White)),
-                ],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [None, None, None, None, None, None, None, None],
-                [
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                    Some(Piece::Pawn(Team::Black)),
-                ],
-                [
-                    Some(Piece::Rook(Team::Black)),
-                    Some(Piece::Horse(Team::Black)),
-                    Some(Piece::Bishop(Team::Black)),
-                    Some(Piece::Queen(Team::Black)),
-                    Some(Piece::King(Team::Black)),
-                    Some(Piece::Bishop(Team::Black)),
-                    Some(Piece::Horse(Team::Black)),
-                    Some(Piece::Rook(Team::Black)),
-                ],
-            ],
-        };
-    }
-}
+const PHYSICAL_WINDOW_SIZE: glutin::dpi::PhysicalSize<f64> =
+    glutin::dpi::PhysicalSize::new(1000.0, 1000.0);
 
 fn main() {
-    let mut game_state = GameState::new();
+    let mut raw_textures = HashMap::new();
+    raw_textures.insert(
+        PieceOrBoard::Board,
+        include_bytes!("../png/schach.png").to_vec(),
+    );
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::King(RochadeAbility::Unable),
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_klt45.png").to_vec(),
+    );
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::King(RochadeAbility::Unable),
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_kdt45.png").to_vec(),
+    );
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::King(RochadeAbility::Able),
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_klt45.png").to_vec(),
+    );
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::King(RochadeAbility::Able),
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_kdt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Queen,
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_qlt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Queen,
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_qdt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Rook(RochadeAbility::Unable),
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_rlt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Rook(RochadeAbility::Unable),
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_rdt45.png").to_vec(),
+    );
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Rook(RochadeAbility::Able),
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_rlt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Rook(RochadeAbility::Able),
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_rdt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Bishop,
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_blt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Bishop,
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_bdt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Horse,
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_nlt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Horse,
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_ndt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Pawn(EnPassanteVulnerability::Invulnerable),
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_plt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Pawn(EnPassanteVulnerability::Invulnerable),
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_pdt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Pawn(EnPassanteVulnerability::Vulnerable),
+            team: Team::White,
+        }),
+        include_bytes!("../png/Chess_plt45.png").to_vec(),
+    );
+
+    raw_textures.insert(
+        PieceOrBoard::Piece(PieceWithTeam {
+            piece: Piece::Pawn(EnPassanteVulnerability::Vulnerable),
+            team: Team::Black,
+        }),
+        include_bytes!("../png/Chess_pdt45.png").to_vec(),
+    );
+
+    let mut cursor_position: glutin::dpi::PhysicalPosition<f64> =
+        glutin::dpi::PhysicalPosition::new(0.0, 0.0);
+    //let mut window_size: glutin::dpi::PhysicalSize<f64> = glutin::dpi::PhysicalSize::new(0.0, 0.0);
+
+    let event_loop = glutin::event_loop::EventLoop::new();
+    let window_builder = glutin::window::WindowBuilder::new()
+        .with_resizable(false)
+        .with_title("deep_red")
+        .with_inner_size(PHYSICAL_WINDOW_SIZE);
+    let context_builder = glutin::ContextBuilder::new();
+    let display = glium::Display::new(window_builder, context_builder, &event_loop).unwrap();
+
+    let plane = Shape {
+        vertices: vec![
+            Vertex {
+                position: [-1.0, -1.0],
+            },
+            Vertex {
+                position: [1.0, -1.0],
+            },
+            Vertex {
+                position: [1.0, 1.0],
+            },
+            Vertex {
+                position: [-1.0, 1.0],
+            },
+        ],
+        indices: vec![0, 1, 2, 2, 3, 0],
+    };
+    let vertex_buffer = glium::VertexBuffer::new(&display, &plane.vertices).unwrap();
+    let indices = glium::IndexBuffer::new(
+        &display,
+        glium::index::PrimitiveType::TrianglesList,
+        &plane.indices,
+    )
+    .unwrap();
+
+    let mut t: f32 = 0.0;
+    let program = glium::Program::from_source(
+        &display,
+        include_str!("vertex_shader.glsl"),
+        include_str!("fragment_shader.glsl"),
+        None,
+    )
+    .unwrap();
+
+    let mut frames_delta_time = Duration::from_millis(5);
+
+    event_loop.run(move |ev, _, control_flow| {
+        let now = Instant::now();
+        *control_flow = glutin::event_loop::ControlFlow::Wait;
+
+        match ev {
+            glutin::event::Event::WindowEvent { event, .. } => match event {
+                glutin::event::WindowEvent::CloseRequested => {
+                    *control_flow = glutin::event_loop::ControlFlow::Exit;
+                    return;
+                }
+                glutin::event::WindowEvent::CursorMoved { position, .. } => {
+                    cursor_position = position;
+                }
+                _ => return,
+            },
+            _ => (),
+        }
+        println!("{},{}", cursor_position.x, cursor_position.y);
+        let uniforms = uniform! {
+            matrix: [
+                [1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0f32],
+            ],
+            u_light:[-1.0, 0.4, 0.9f32],
+        };
+        let mut target = display.draw();
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
+        target
+            .draw(
+                &vertex_buffer,
+                &indices,
+                &program,
+                &uniforms,
+                &Default::default(),
+            )
+            .unwrap();
+        target.finish().unwrap();
+        frames_delta_time = now.elapsed();
+        t += 0.000002 * frames_delta_time.as_micros() as f32;
+    });
 }
