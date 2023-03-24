@@ -1,8 +1,10 @@
 #version 140
 
+in vec2 v_texture_position;
 out vec4 color;
-uniform vec3 u_light;
+
+uniform sampler2D tex;
 
 void main() {
-  color = vec4(1.0,0.0,0.0, 1.0);
+  color = texture(tex, v_texture_position);
 }

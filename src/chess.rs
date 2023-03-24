@@ -95,6 +95,11 @@ impl Play {
     }
     pub fn get_possible_plays_for_tile(origin: TilePosition, game_state: &GameState) -> Vec<Play> {
         let mut possible_plays: Vec<Play> = vec![];
+        if !origin.is_valid() {
+            println!("invalid tile");
+            return possible_plays;
+        }
+        println!("GOOD");
         let Some(piece_with_team) = game_state.board[origin.number][origin.letter] else {
             return possible_plays;
         };
