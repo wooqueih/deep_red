@@ -44,7 +44,7 @@ pub struct PieceWithTeam {
     pub team: Team,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct TilePosition {
     pub letter: usize,
     pub number: usize,
@@ -61,7 +61,7 @@ enum Direction {
     DownLeft,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Play {
     pub origin: TilePosition,
     pub target: TilePosition,
@@ -96,10 +96,10 @@ impl Play {
     pub fn get_possible_plays_for_tile(origin: TilePosition, game_state: &GameState) -> Vec<Play> {
         let mut possible_plays: Vec<Play> = vec![];
         if !origin.is_valid() {
-            println!("invalid tile");
+            //println!("invalid tile");
             return possible_plays;
         }
-        println!("GOOD");
+        //println!("GOOD");
         let Some(piece_with_team) = game_state.board[origin.number][origin.letter] else {
             return possible_plays;
         };
@@ -124,7 +124,7 @@ impl Play {
                         },
                     });
                     if origin.number
-                        == ((3.5 + 2.5 * direction_coefficient as f32).round() as usize)
+                        == ((3.5 - 2.5 * direction_coefficient as f32).round() as usize)
                         && game_state.board
                             [(origin.number as isize + 2 * direction_coefficient) as usize]
                             [origin.letter]
@@ -141,7 +141,10 @@ impl Play {
                     }
                 }
                 let target = TilePosition {
-                    letter: origin.letter - 1,
+                    letter: match origin.letter.checked_sub(1) {
+                        Some(num) => num,
+                        None => 255,
+                    },
                     number: (origin.number as isize + direction_coefficient) as usize,
                 };
                 if target.is_valid() {
@@ -179,22 +182,40 @@ impl Play {
                     },
                     TilePosition {
                         letter: origin.letter + 1,
-                        number: origin.number - 1,
+                        number: match origin.number.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
                         letter: origin.letter,
-                        number: origin.number - 1,
+                        number: match origin.number.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
-                        letter: origin.letter - 1,
-                        number: origin.number - 1,
+                        letter: match origin.letter.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
+                        number: match origin.number.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
-                        letter: origin.letter - 1,
+                        letter: match origin.letter.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                         number: origin.number,
                     },
                     TilePosition {
-                        letter: origin.letter - 1,
+                        letter: match origin.letter.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                         number: origin.number + 1,
                     },
                     TilePosition {
@@ -224,30 +245,54 @@ impl Play {
                     },
                     TilePosition {
                         letter: origin.letter + 2,
-                        number: origin.number - 1,
+                        number: match origin.number.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
                         letter: origin.letter + 1,
                         number: origin.number + 2,
                     },
                     TilePosition {
-                        letter: origin.letter - 1,
+                        letter: match origin.letter.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                         number: origin.number + 2,
                     },
                     TilePosition {
-                        letter: origin.letter - 1,
-                        number: origin.number - 2,
+                        letter: match origin.letter.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
+                        number: match origin.number.checked_sub(2) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
                         letter: origin.letter + 1,
-                        number: origin.number - 2,
+                        number: match origin.number.checked_sub(2) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
-                        letter: origin.letter - 2,
-                        number: origin.number - 1,
+                        letter: match origin.letter.checked_sub(2) {
+                            Some(num) => num,
+                            None => 255,
+                        },
+                        number: match origin.number.checked_sub(1) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                     },
                     TilePosition {
-                        letter: origin.letter - 2,
+                        letter: match origin.letter.checked_sub(2) {
+                            Some(num) => num,
+                            None => 255,
+                        },
                         number: origin.number + 1,
                     },
                 ];
@@ -585,6 +630,21 @@ impl GameState {
         next_game_state.board[play.origin.number][play.origin.letter] = None;
 
         return next_game_state;
+    }
+    pub fn empty() -> Self {
+        return Self {
+            turn: Team::White,
+            board: [
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+                [None, None, None, None, None, None, None, None],
+            ],
+        };
     }
     pub fn new() -> Self {
         return Self {

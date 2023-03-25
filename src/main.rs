@@ -35,8 +35,8 @@ enum PieceOrBoard {
 }
 
 const TILE_SIZE: f32 = 0.25;
-const LOGICAL_WINDOW_SIZE: glutin::dpi::LogicalSize<f64> =
-    glutin::dpi::LogicalSize::new(500.0, 500.0);
+const LOGICAL_WINDOW_SIZE: glutin::dpi::PhysicalSize<f64> =
+    glutin::dpi::PhysicalSize::new(1000.0, 1000.0);
 
 fn main() {
     let all_piece_or_board_states_with_respective_file = [
@@ -178,13 +178,21 @@ fn main() {
     ];
 
     let mut game_state = GameState::new();
+    /*game_state.board[3][3] = Some(PieceWithTeam {
+        piece: Piece::King(RochadeAbility::Able),
+        team: Team::White,
+    });*/
 
-    let mut hovered_tile: TilePosition = TilePosition {
+    let mut selected_tile: TilePosition = TilePosition {
         letter: 0,
         number: 0,
     };
-    let mut cursor_position: glutin::dpi::LogicalPosition<f64> =
-        glutin::dpi::LogicalPosition::new(0.0, 0.0);
+    let mut previous_selected_tile: TilePosition = TilePosition {
+        letter: 0,
+        number: 0,
+    };
+    let mut cursor_position: glutin::dpi::PhysicalPosition<f64> =
+        glutin::dpi::PhysicalPosition::new(0.0, 0.0);
 
     let event_loop = glutin::event_loop::EventLoop::new();
     let window_builder = glutin::window::WindowBuilder::new()
@@ -245,6 +253,26 @@ fn main() {
 
     let mut frames_delta_time = Duration::from_millis(5);
 
+    /*for i in 0..8 {
+        for j in 0..8 {
+            let pos = PhysicalPosition {
+                x: (LOGICAL_WINDOW_SIZE.height * i as f64 * 0.125), //+ TILE_SIZE as f64 - 0.01,
+                y: (LOGICAL_WINDOW_SIZE.height * j as f64 * 0.125), //+ TILE_SIZE as f64 - 0.01,
+            };
+            println!("________________________________");
+            println!("{} | {}", pos.x, pos.y);
+            let Some(tile) = get_selected_tile(&pos) else {
+                continue;
+            };
+            println!("{} | {}", tile.letter, tile.number);
+            let plays = Play::get_possible_plays_for_tile(tile, &game_state);
+            let Some(play) = plays.get(0) else {
+                continue;
+            };
+            println!("{} | {}", play.origin.letter, play.origin.number);
+        }
+    }*/
+
     event_loop.run(move |ev, _, control_flow| {
         let now = Instant::now();
         *control_flow = glutin::event_loop::ControlFlow::Wait;
@@ -256,8 +284,31 @@ fn main() {
                     return;
                 }
                 glutin::event::WindowEvent::CursorMoved { position, .. } => {
-                    cursor_position = position.to_logical(1.0);
-                    hovered_tile = get_hovered_tile(&cursor_position);
+                    cursor_position = position;
+                }
+                glutin::event::WindowEvent::MouseInput { state, button, .. }
+                    if button == glutin::event::MouseButton::Left
+                        && state == glutin::event::ElementState::Pressed =>
+                {
+                    previous_selected_tile = selected_tile;
+                    selected_tile = match get_selected_tile(&cursor_position) {
+                        Some(tile) => tile,
+                        None => selected_tile,
+                    };
+                    match game_state.board[selected_tile.letter][selected_tile.number] {
+                        Some(piece) if piece.team == game_state.turn => {}
+                        _ => {
+                            let play = Play {
+                                origin: previous_selected_tile,
+                                target: selected_tile,
+                            };
+                            if Play::get_possible_plays_for_tile(play.origin, &game_state)
+                                .contains(&play)
+                            {
+                                game_state = game_state.after(play);
+                            }
+                        }
+                    }
                 }
                 _ => return,
             },
@@ -293,7 +344,7 @@ fn main() {
             ..glium::draw_parameters::DrawParameters::default()
         };
 
-        let possible_moves = Play::get_possible_plays_for_tile(hovered_tile, &game_state);
+        let possible_moves = Play::get_possible_plays_for_tile(selected_tile, &game_state);
         let Some(texture) = all_textures.get(&PieceOrBoard::Blue) else {
                     panic!("texture does not exist");
         };
@@ -338,11 +389,11 @@ fn main() {
                     ],
                 ];
                 let Some(piece_with_team) = *piece_option else {
-                    continue;
-                };
+                            continue;
+                        };
                 let Some(texture) = all_textures.get(&PieceOrBoard::Piece(piece_with_team)) else {
-                    panic!("texture does not exist");
-                };
+                            panic!("texture does not exist");
+                        };
                 let uniforms = uniform! {
                     matrix: matrix,
                     tex: texture,
@@ -373,9 +424,13 @@ impl Position {
     fn as_board_indices(&self) -> (usize, usize) {}
     fn as_gl(&self) -> (f32, f32) {}
 }*/
-fn get_hovered_tile(position: &LogicalPosition<f64>) -> TilePosition {
-    return TilePosition {
+fn get_selected_tile(position: &PhysicalPosition<f64>) -> Option<TilePosition> {
+    if position.x > LOGICAL_WINDOW_SIZE.width || position.y > LOGICAL_WINDOW_SIZE.height {
+        return None;
+    }
+    return Some(TilePosition {
         letter: (position.x * (8.0 / LOGICAL_WINDOW_SIZE.width)).trunc() as usize,
-        number: (position.y * (8.0 / LOGICAL_WINDOW_SIZE.height)).trunc() as usize,
-    };
+        number: 7 - (position.y * (8.0 / LOGICAL_WINDOW_SIZE.height)).trunc() as usize,
+    });
 }
+fn try_play(play: Play, game_state: &mut GameState) {}
